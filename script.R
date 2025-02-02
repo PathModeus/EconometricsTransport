@@ -308,4 +308,66 @@ print(ks)
 
 qqnorm(y=res)
 
+
+################################
+# Prévision: nouvelles données #
+################################
+
+# Données de 2023
+
+GDPreal_2023 = 100*2822455000000/124.0529
+CPI_2023 = 124.0529
+IPT_2023 = 119.76
+
+# Données en 2030
+
+GDPreal_2030 = 1.011*1.009*(1.013^5)*GDPreal_2023
+CPI_2030 = 1.02*(1.02^6)*CPI_2023
+IPT_2030 = 1.055*(1.033^6)*IPT_2023
+TSP_2030 = x5[39]
+
+# Variables en 2030
+
+x1_2030 = GDPreal_2030
+x2_2030 = 100*IPT_2030/CPI_2030
+x5_2030 = TSP_2030
+
+########################
+# Prévision: bootstrap #
+########################
+
+library("boot")
+time <- time_fin
+databoot <- data.frame(time, x1seg3, x2seg3, x5seg3, yseg3)
+
+# Fit a linear regression model
+model <- lm(yseg3 ~ x1seg3 + x2seg3 + x5seg3, data = databoot)
+
+# Function to perform bootstrap resampling
+boot_pred <- function(databoot, indices, new_data) {
+  boot_sample <- databoot[indices, ]
+  model_boot <- lm(yseg3 ~ x1seg3 + x2seg3 + x5seg3, data = boot_sample)
+  predict(model_boot, newdata = new_data)
+}
+
+# Define new data for prediction
+new_obs <- data.frame(x1seg3 = x1_2030, x2seg3 = x2_2030, x5seg3 = x5_2030)
+
+# Perform bootstrap with 1000 resamples
+boot_results <- boot(databoot, statistic = function(databoot, indices) boot_pred(databoot, indices, new_obs), R = 1000)
+
+# Extract predictions and compute confidence intervals
+predicted_values <- boot_results$t
+pred_mean <- mean(predicted_values)
+pred_ci <- quantile(predicted_values, probs = c(0.025, 0.975))  # 95% CI
+
+# Display results
+cat("Predicted Value:", pred_mean, "\n")
+cat("95% Confidence Interval:", pred_ci[1], "to", pred_ci[2], "\n")
+
+# Histogram of bootstrap predictions
+hist(predicted_values, breaks = 30, main = "Bootstrap Predictions", col = "lightblue", border = "black")
+abline(v = pred_mean, col = "red", lwd = 2)
+abline(v = pred_ci, col = "blue", lwd = 2, lty = 2)
+
 # Bootstrap: prévision
